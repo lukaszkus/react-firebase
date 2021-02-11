@@ -1,81 +1,107 @@
-import React, {useState} from 'react'
-import {Link} from 'react-router-dom'
+import React, {Component} from 'react'
+import {Link, withRouter} from 'react-router-dom'
+import { compose } from 'recompose';
 
-import {FirebaseContext} from '../Firebase'
+import {withFirebase} from '../Firebase'
 import * as ROUTES from '../../constants/routes'
 
 function SignUpPage () {
     return (
         <div>
             <h1>SignUp</h1>
-            <FirebaseContext.Consumer>
-              {firebase => <SignUpForm firebase={firebase}/>}
-            </FirebaseContext.Consumer>
+            <SignUpForm/>
         </div>
     )
 }
 
-function SignUpForm ({firebase}) {
-    const [userName, setUserName] = useState("");
-    const [email, setEmail] = useState("");
-    const [passwordOne, setPasswordOne] = useState("");
-    const [passwordTwo, setPasswordTwo] = useState("");
-    // const [error, setError] = useState(null);
+const INITIAL_STATE = {
+  username: "",
+  email: "",
+  passwordOne: "",
+  passwordTwo: "",
+  error: null,
+}
 
-    const submitFrom = (e) => {
-      e.preventDefault();
-      
-      firebase.auth().doCreateUserWithEmailAndPassword(userName, email, passwordOne)
-            .then(()=> {
-            console.log('Added to firebase');
-        }).catch(err => {
-            console.log(err);
-        })
-    }
+class SignUpFormBase extends Component {
+  constructor(props){
+    super(props);
 
-    const isInvalid =
+    this.state = {...INITIAL_STATE};
+  }
+    
+  onSubmit = e => {
+    const { username, email, passwordOne } = this.state;
+ 
+    this.props.firebase
+      .doCreateUserWithEmailAndPassword(email, passwordOne)
+      .then(authUser => {
+        this.setState({ ...INITIAL_STATE });
+        this.props.history.push(ROUTES.HOME);
+      })
+      .catch(error => {
+        this.setState({ error });
+      });
+ 
+    e.preventDefault();
+  }
+
+  onChange = e => {
+    this.setState({ [e.target.name]: e.target.value });
+  };
+
+render(){
+
+  const {
+    username,
+    email,
+    passwordOne,
+    passwordTwo,
+    error,
+  } = this.state;
+
+  const isInvalid =
       passwordOne !== passwordTwo ||
       passwordOne === '' ||
       email === '' ||
-      userName === '';
-
+      username === '';
 
     return (
-        <form onSubmit={submitFrom}>
+        <form onSubmit={this.onSubmit}>
             <input
               name="username"
-              value={userName}
-              onChange={e => setUserName(e.target.value)}
+              value={username}
+              onChange={this.onChange}
               type="text"
               placeholder="Full Name"
             />
             <input
               name="email"
               value={email}
-              onChange={e => setEmail(e.target.value)}
+              onChange={this.onChange}
               type="text"
               placeholder="Email Address"
             />
             <input
               name="passwordOne"
               value={passwordOne}
-              onChange={e => setPasswordOne(e.target.value)}
+              onChange={this.onChange}
               type="password"
               placeholder="Password"
             />
             <input
               name="passwordTwo"
               value={passwordTwo}
-              onChange={e => setPasswordTwo(e.target.value)}
+              onChange={this.onChange}
               type="password"
               placeholder="Confirm Password"
             />
 
             <button type="submit" disabled={isInvalid}>Sign Up</button>
     
-            {/* {error && <p>{error.message}</p>} */}
+            {error && <p>{error.message}</p>}
         </form>
     )
+}
 }
 
 
@@ -87,8 +113,10 @@ function SignUpLink() {
     )
 }
 
-
-
+const SignUpForm = compose(
+  withRouter,
+  withFirebase,
+)(SignUpFormBase);
 
 export default SignUpPage;
 export {SignUpForm, SignUpLink}
